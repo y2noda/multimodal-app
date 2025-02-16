@@ -3,9 +3,13 @@ import { useState } from "react";
 
 interface EssayConfigProps {
     onConfigChange: (config: EssayConfig | undefined) => void;
+    disabled?: boolean;
 }
 
-export function EssayConfigForm({ onConfigChange }: EssayConfigProps) {
+export function EssayConfigForm({
+    onConfigChange,
+    disabled,
+}: EssayConfigProps) {
     const [isEnabled, setIsEnabled] = useState(false);
     const [style, setStyle] = useState<EssayStyle>("casual");
     const [structure, setStructure] = useState({
@@ -47,6 +51,7 @@ export function EssayConfigForm({ onConfigChange }: EssayConfigProps) {
                     checked={isEnabled}
                     onChange={handleToggle}
                     className="w-4 h-4"
+                    disabled={disabled}
                 />
                 <label htmlFor="essay-mode" className="text-sm font-medium">
                     エッセイ形式で出力

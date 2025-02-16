@@ -1,3 +1,4 @@
+import type { ScreenAnalysisRequest } from '@/shared/types';
 import { Hono } from 'hono';
 import { convertBase64ToFileData, textOnlyModel, visionModel } from '../lib/gemini';
 import logger from '../lib/logger';
@@ -6,9 +7,43 @@ import type { AppType } from './types';
 
 const chat = new Hono<AppType>();
 
-chat.post('/chat', async (c) => {
+chat.post('/api/chat', async (c) => {
   try {
-    const { message, images, essayConfig } = await c.req.json();
+    const body = await c.req.json();
+
+    // 画面共有分析リクエストの場合
+    if (body.type === 'screen_analysis') {
+      const { message, images, metadata } = body as ScreenAnalysisRequest;
+      logger.info('画面共有分析リクエスト受信', { metadata });
+
+      if (!images?.[0]) {
+        throw new Error('画像データが含まれていません');
+      }
+
+      const { data, mimeType } = await convertBase64ToFileData(images[0]);
+      const imageContent = {
+        inlineData: {
+          data: data.toString('base64'),
+          mimeType
+        }
+      };
+
+      const result = await textOnlyModel.generateContent([message, imageContent]);
+      const response = await result.response?.text();
+
+      if (!response) {
+        throw new Error('分析結果が空です');
+      }
+
+      return c.json({
+        id: crypto.randomUUID(),
+        message: response,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 通常のチャットリクエストの処理
+    const { message, images, essayConfig } = body;
     logger.info('受信したリクエスト', { message, hasImages: !!images?.length, essayConfig });
 
     let response: string;

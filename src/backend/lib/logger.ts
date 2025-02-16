@@ -23,3 +23,21 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export default logger;
+
+export const securityLogger = {
+  logScreenShare: (userId: string, shareType: 'window' | 'tab' | 'desktop') => {
+    logger.info('Screen share started', {
+      userId,
+      shareType,
+      timestamp: new Date().toISOString(),
+    });
+  },
+
+  logDataEncryption: (dataType: string, status: 'success' | 'failure') => {
+    logger.info('Data encryption event', {
+      dataType,
+      status,
+      timestamp: new Date().toISOString()
+    });
+  }
+};

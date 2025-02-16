@@ -4,20 +4,24 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+        "dev:backend": "tsx watch src/backend/server.ts",
         "build": "tsc -b && vite build",
         "format": "pnpm biome format --write .",
         "lint": "pnpm biome lint .",
         "check": "pnpm biome check --apply .",
         "preview": "vite preview",
-        "server": "tsx src/backend/server.ts"
+        "server": "tsx src/backend/server.ts",
+        "test:ws": "vitest src/backend/test/websocket-client.test.ts"
     },
     "dependencies": {
         "@google/generative-ai": "^0.21.0",
+        "@hono/node-ws": "^1.0.8",
         "@radix-ui/react-slot": "^1.1.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "dotenv": "^16.4.5",
+        "eventemitter3": "^5.0.1",
         "hono": "^4.7.1",
         "lucide-react": "^0.475.0",
         "react": "^19.0.0",
@@ -31,6 +35,7 @@
         "@types/node": "^22.13.4",
         "@types/react": "^19.0.8",
         "@types/react-dom": "^19.0.3",
+        "@types/ws": "^8.5.14",
         "@vitejs/plugin-react": "^4.3.4",
         "autoprefixer": "^10.4.20",
         "postcss": "^8.5.2",
@@ -38,6 +43,8 @@
         "tsx": "^4.19.2",
         "typescript": "~5.7.2",
         "vite": "^6.1.0",
-        "winston": "^3.17.0"
+        "vitest": "^3.0.5",
+        "winston": "^3.17.0",
+        "ws": "^8.18.0"
     }
 }

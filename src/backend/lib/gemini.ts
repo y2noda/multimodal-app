@@ -32,19 +32,19 @@ const safetySettings = [
 ];
 
 // テキストのみのモデル
-export const textOnlyModel = genAI.getGenerativeModel({
-  model: "gemini-pro",
+const textOnlyModel = genAI.getGenerativeModel({
+  model: "models/gemini-2.0-flash-exp",
   safetySettings,
 });
 
 // マルチモーダルモデル
-export const visionModel = genAI.getGenerativeModel({
+const visionModel = genAI.getGenerativeModel({
   model: "models/gemini-2.0-flash-exp",
   safetySettings,
 });
 
 // 画像をFileData形式に変換する関数
-export const convertBase64ToFileData = async (base64String: string) => {
+const convertBase64ToFileData = async (base64String: string) => {
   const mimeType = base64String.split(';')[0].split(':')[1];
   const base64Data = base64String.split(',')[1];
 
@@ -52,4 +52,32 @@ export const convertBase64ToFileData = async (base64String: string) => {
     data: Buffer.from(base64Data, 'base64'),
     mimeType
   };
+};
+
+interface MultimodalRequest {
+  screenContent: Buffer;
+  textPrompt: string;
+  contextHistory: ChatMessage[];
+  preferences: {
+    responseFormat: 'structured' | 'freeform';
+    maxTokens: number;
+    temperature: number;
+  };
+}
+
+// 型定義を追加
+interface ChatMessage {
+  message: string;
+  timestamp: string;
+  type: 'user' | 'assistant';
+}
+
+
+
+export {
+  convertBase64ToFileData,
+  textOnlyModel,
+  visionModel,
+  type ChatMessage,
+  type MultimodalRequest
 };

@@ -1,4 +1,3 @@
-
 // チャットメッセージの型
 export type ChatMessage = {
   message: string;
@@ -25,7 +24,7 @@ export type ScreenShareResponse = {
 export interface ApiEndpoints {
   '/api/chat': {
     post: {
-      input: ChatMessage | MultiModalMessage;
+      input: ChatRequest | ScreenAnalysisRequest;
       output: ChatResponse | ApiErrorResponse;
     }
     get: {
@@ -70,4 +69,25 @@ export interface ChatResponse {
   id: string;
   message: string;
   timestamp: string;
+  type?: 'user' | 'assistant';
+  hasScreenShare?: boolean;
+  isScreenAnalysis?: boolean;
+}
+
+export interface MultimodalRequest {
+    message: string;
+    images?: string[];  // base64エンコードされた画像データ
+    contextHistory?: ChatMessage[];
+}
+
+export type ScreenAnalysisMetadata = {
+    shareType: "window" | "tab" | "desktop";
+    timestamp: string;
+};
+
+export interface ScreenAnalysisRequest {
+    type: "screen_analysis";
+    message: string;
+    images: string[];
+    metadata: ScreenAnalysisMetadata;
 }
