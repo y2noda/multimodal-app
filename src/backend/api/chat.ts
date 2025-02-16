@@ -1,19 +1,28 @@
 import { Hono } from 'hono';
 import { convertBase64ToFileData, textOnlyModel, visionModel } from '../lib/gemini';
+import logger from '../lib/logger';
+import { formatEssayPrompt } from '../prompts/essay';
 import type { AppType } from './types';
 
 const chat = new Hono<AppType>();
 
 chat.post('/chat', async (c) => {
   try {
-    const { message, images } = await c.req.json();
-    console.log('受信したリクエスト:', { message, hasImages: !!images?.length });
+    const { message, images, essayConfig } = await c.req.json();
+    logger.info('受信したリクエスト', { message, hasImages: !!images?.length, essayConfig });
 
     let response: string;
+    let processedMessage = message;
+
+    // エッセイ形式が要求された場合、プロンプトを整形
+    if (essayConfig) {
+      logger.info('エッセイ形式での出力を準備中...');
+      processedMessage = formatEssayPrompt(message, essayConfig);
+    }
 
     if (images && images.length > 0) {
       // マルチモーダルの場合
-      console.log('マルチモーダルモードで処理中...');
+      logger.info('マルチモーダルモードで処理中...');
       const model = visionModel;
       try {
         const imageContents = await Promise.all(
@@ -27,31 +36,31 @@ chat.post('/chat', async (c) => {
             };
           })
         );
-        console.log('画像の変換が完了しました');
+        logger.info('画像の変換が完了しました');
 
-        const result = await model.generateContent([message, ...imageContents]);
+        const result = await model.generateContent([processedMessage, ...imageContents]);
         if (!result.response) {
           throw new Error('Geminiからのレスポンスが空です');
         }
         response = await result.response.text();
-        console.log('Geminiからのレスポンス:', response);
+        logger.info('Geminiからのレスポンス受信', { response });
       } catch (error) {
-        console.error('マルチモーダル処理エラー:', error);
+        logger.error('マルチモーダル処理エラー', { error });
         throw error;
       }
     } else {
       // テキストのみの場合
-      console.log('テキストのみモードで処理中...');
+      logger.info('テキストのみモードで処理中...');
       const model = textOnlyModel;
       try {
-        const result = await model.generateContent(message);
+        const result = await model.generateContent(processedMessage);
         if (!result.response) {
           throw new Error('Geminiからのレスポンスが空です');
         }
         response = await result.response.text();
-        console.log('Geminiからのレスポンス:', response);
+        logger.info('Geminiからのレスポンス受信', { response });
       } catch (error) {
-        console.error('テキスト処理エラー:', error);
+        logger.error('テキスト処理エラー', { error });
         throw error;
       }
     }
@@ -61,16 +70,14 @@ chat.post('/chat', async (c) => {
       message: response,
       timestamp: new Date().toISOString()
     };
-    console.log('送信するレスポンス:', responseData);
+    logger.info('送信するレスポンス', { responseData });
 
-    // Content-Typeヘッダーを明示的に設定
     c.header('Content-Type', 'application/json');
     return c.json(responseData);
   } catch (error) {
-    console.error('Chat API error:', error);
+    logger.error('Chat API error:', { error });
     const errorMessage = error instanceof Error ? error.message : 'チャットの処理中にエラーが発生しました';
 
-    // エラーレスポンスでもContent-Typeを設定
     c.header('Content-Type', 'application/json');
     return c.json({ error: errorMessage }, 500);
   }

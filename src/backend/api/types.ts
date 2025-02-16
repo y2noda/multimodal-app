@@ -8,3 +8,16 @@ export type Env = {
 
 // Honoのアプリケーション型
 export type AppType = Env & ApiEndpoints;
+
+export interface ChatRequest {
+  message: string;
+  images?: string[];
+  essayConfig?: {
+    style: 'formal' | 'casual';
+    structure: {
+      introduction: boolean;
+      body: boolean;
+      conclusion: boolean;
+    };
+  };
+}

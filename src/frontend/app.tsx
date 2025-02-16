@@ -1,94 +1,84 @@
-import { Button } from "@/frontend/components/ui/button";
-import { apiClient } from "@/frontend/utils/api-client";
+import type { ChatResponse, EssayConfig } from "@/shared/types";
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { ChatInput } from "./components/chat/chat-input";
 import "./styles/app.css";
-import viteLogo from "/vite.svg";
 
 function App() {
-    const [count, setCount] = useState(0);
-    const [response, setResponse] = useState<string>("");
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [messages, setMessages] = useState<ChatResponse[]>([]);
+    const [error, setError] = useState<string | null>(null);
 
-    // 画像ファイルをbase64に変換する関数
-    const convertImageToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    };
-
-    // 画像ファイルが選択されたときの処理
-    const handleImageSelect = async (
-        event: React.ChangeEvent<HTMLInputElement>
+    const handleSubmit = async (
+        message: string,
+        images?: string[],
+        essayConfig?: EssayConfig
     ) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const base64Image = await convertImageToBase64(file);
-            setSelectedImage(base64Image);
-        }
-    };
+        setIsLoading(true);
+        setError(null);
 
-    // チャットAPIをテストする関数
-    const testChatApi = async () => {
         try {
-            console.log("APIリクエスト送信:", {
-                message: "この画像について説明してください",
-                hasImage: !!selectedImage,
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    message,
+                    images,
+                    essayConfig,
+                }),
             });
 
-            const data = await apiClient.chat.send(
-                "この画像について説明してください",
-                selectedImage ? [selectedImage] : undefined
-            );
-            console.log("APIレスポンス受信:", data);
-            setResponse(JSON.stringify(data, null, 2));
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.error || "チャットの送信に失敗しました"
+                );
+            }
+
+            const data = await response.json();
+            setMessages((prev) => [...prev, data]);
         } catch (error) {
-            console.error("APIエラー:", error);
-            setResponse(`エラー: ${error}`);
+            console.error("Error:", error);
+            setError(
+                error instanceof Error ? error.message : "エラーが発生しました"
+            );
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <>
-            <div>
-                <a href="https://vite.dev" target="_blank" rel="noreferrer">
-                    <img src={viteLogo} className="logo" alt="Vite logo" />
-                </a>
-                <a href="https://react.dev" target="_blank" rel="noreferrer">
-                    <img
-                        src={reactLogo}
-                        className="logo react"
-                        alt="React logo"
-                    />
-                </a>
-            </div>
-            <h1>マルチモーダルAPI テスト</h1>
-            <div className="card">
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageSelect}
-                />
-                {selectedImage && (
-                    <img
-                        src={selectedImage}
-                        alt="Selected"
-                        style={{ maxWidth: "300px", marginTop: "10px" }}
-                    />
+        <div className="min-h-screen bg-gray-100 py-6">
+            <div className="max-w-4xl mx-auto px-4">
+                <h1 className="text-2xl font-bold mb-6">AI チャット</h1>
+
+                {/* エラーメッセージ */}
+                {error && (
+                    <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+                        {error}
+                    </div>
                 )}
-                <button
-                    type="button"
-                    onClick={() => setCount((count) => count + 1)}
-                >
-                    count is {count}
-                </button>
-                <Button onClick={testChatApi}>APIをテスト</Button>
-                <pre>{response}</pre>
+
+                {/* メッセージ履歴 */}
+                <div className="space-y-4 mb-6">
+                    {messages.map((msg) => (
+                        <div
+                            key={msg.id}
+                            className="p-4 bg-white rounded-lg shadow"
+                        >
+                            <p className="whitespace-pre-wrap">{msg.message}</p>
+                            <p className="text-xs text-gray-500 mt-2">
+                                {new Date(msg.timestamp).toLocaleString()}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* チャット入力 */}
+                <ChatInput onSubmit={handleSubmit} isLoading={isLoading} />
             </div>
-        </>
+        </div>
     );
 }
 

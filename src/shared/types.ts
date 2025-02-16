@@ -1,3 +1,4 @@
+
 // チャットメッセージの型
 export type ChatMessage = {
   message: string;
@@ -6,13 +7,6 @@ export type ChatMessage = {
 // マルチモーダルメッセージの型
 export type MultiModalMessage = ChatMessage & {
   images?: string[]; // base64エンコードされた画像データの配列
-}
-
-// チャットレスポンスの型
-export type ChatResponse = {
-  id: string;
-  message: string;
-  timestamp: string;
 }
 
 // APIのエラーレスポンスの型
@@ -27,8 +21,8 @@ export type ScreenShareResponse = {
   success: boolean;
 }
 
-// APIエンドポイントの定義
-export type ApiEndpoints = {
+// APIエンドポイントの型定義
+export interface ApiEndpoints {
   '/api/chat': {
     post: {
       input: ChatMessage | MultiModalMessage;
@@ -48,4 +42,32 @@ export type ApiEndpoints = {
       output: { success: boolean }
     }
   }
+}
+
+// エッセイ関連の型定義
+export type EssayStyle = 'formal' | 'casual';
+
+export interface EssayStructure {
+  introduction: boolean;
+  body: boolean;
+  conclusion: boolean;
+}
+
+export interface EssayConfig {
+  style: EssayStyle;
+  structure: EssayStructure;
+}
+
+// チャットリクエストの型定義
+export interface ChatRequest {
+  message: string;
+  images?: string[];
+  essayConfig?: EssayConfig;
+}
+
+// チャットレスポンスの型定義
+export interface ChatResponse {
+  id: string;
+  message: string;
+  timestamp: string;
 }
