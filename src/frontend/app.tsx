@@ -14,7 +14,7 @@ function App() {
             </header>
 
             {/* メインコンテンツ */}
-            <div className="flex-1 flex flex-col pt-[3.5rem]">
+            <div className="flex-1 flex flex-col h-screen pt-[3.5rem]">
                 <Chat />
             </div>
         </div>

@@ -1,7 +1,9 @@
+import type { EssayConfig } from '@/shared/types';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { Hono } from 'hono';
 import { convertBase64ToFileData, textOnlyModel, visionModel } from '../lib/gemini';
 import logger from '../lib/logger';
+import { formatEssayPrompt } from '../prompts/essay';
 import type { AppType } from './types';
 
 // RPCリクエストの型定義
@@ -15,10 +17,7 @@ interface RPCRequest<T = unknown> {
 interface ChatParams {
   message: string;
   images?: string[];
-  essayConfig?: {
-    type: string;
-    length: number;
-  };
+  essayConfig?: EssayConfig;
 }
 
 interface ScreenAnalysisParams {
@@ -103,6 +102,14 @@ async function handleChatRequest(params: ChatParams): Promise<ChatResponse> {
   logger.info('チャットリクエストの処理を開始', params);
 
   try {
+    let processedMessage = params.message;
+
+    // エッセイ設定がある場合、プロンプトを整形
+    if (params.essayConfig) {
+      logger.info('エッセイ形式での出力を準備中...', params.essayConfig);
+      processedMessage = formatEssayPrompt(processedMessage, params.essayConfig);
+    }
+
     if (params.images && params.images.length > 0) {
       logger.info('画像付きメッセージを処理中');
       const imageContents = await Promise.all(
@@ -117,7 +124,7 @@ async function handleChatRequest(params: ChatParams): Promise<ChatResponse> {
         })
       );
 
-      const result = await visionModel.generateContent([params.message, ...imageContents]);
+      const result = await visionModel.generateContent([processedMessage, ...imageContents]);
       const response = {
         message: await result.response?.text() || '',
         timestamp: new Date().toISOString()
@@ -128,7 +135,7 @@ async function handleChatRequest(params: ChatParams): Promise<ChatResponse> {
     }
 
     logger.info('テキストメッセージを処理中');
-    const result = await textOnlyModel.generateContent(params.message);
+    const result = await textOnlyModel.generateContent(processedMessage);
     const response = {
       message: await result.response?.text() || '',
       timestamp: new Date().toISOString()

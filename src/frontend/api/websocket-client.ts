@@ -1,73 +1,23 @@
 import type { ChatResponse as SharedChatResponse } from "@/shared/types";
 import { EventEmitter } from "eventemitter3";
 
-// EventEmitterの型定義
-type EventType = 'connected' | 'disconnected' | 'error';
-type EventCallback<T> = T extends 'error' ? (error: Error | Event) => void : () => void;
-
-class SimpleEventEmitter {
-    private listeners: Record<EventType, EventCallback<EventType>[]> = {
-        connected: [],
-        disconnected: [],
-        error: []
-    };
-
-    on<T extends EventType>(event: T, callback: EventCallback<T>): void {
-        this.listeners[event].push(callback as EventCallback<EventType>);
-    }
-
-    emit<T extends EventType>(event: T, ...args: T extends 'error' ? [Error | Event] : []): void {
-        const callbacks = this.listeners[event];
-        for (const callback of callbacks) {
-            if (args.length > 0 && args[0] !== undefined) {
-                (callback as (error: Error | Event) => void)(args[0]);
-            } else {
-                (callback as () => void)();
-            }
-        }
-    }
-
-    removeAllListeners(): void {
-        this.listeners = {
-            connected: [],
-            disconnected: [],
-            error: []
-        };
-    }
-}
-
-interface RPCRequest<T = unknown> {
-  id: string;
-  method: 'chat' | 'screenAnalysis';
-  params: T;
-}
-
 interface RPCResponse<T = unknown> {
-  id: string;
-  result?: T;
-  error?: {
-    code: number;
-    message: string;
-  };
+    id: string;
+    result?: T;
+    error?: {
+        code: number;
+        message: string;
+    };
 }
-
-interface ChatParams {
-  message: string;
-  images?: string[];
-  essayConfig?: {
-    type: string;
-    length: number;
-  };
-}
-
-export type ChatResponse = SharedChatResponse;
 
 interface WebSocketClientEvents {
     connected: () => void;
     disconnected: () => void;
     error: (error: Error) => void;
-    message: <T>(response: RPCResponse<T>) => void;
+    message: (response: RPCResponse<unknown>) => void;
 }
+
+export type ChatResponse = SharedChatResponse;
 
 export class WebSocketRPCClient extends EventEmitter<WebSocketClientEvents> {
     private ws: WebSocket | null = null;
@@ -75,7 +25,6 @@ export class WebSocketRPCClient extends EventEmitter<WebSocketClientEvents> {
     private reconnectAttempts = 0;
     private readonly maxReconnectAttempts = 5;
     private isClosing = false;
-    private connectPromise: Promise<void> | null = null;
     private cleanupFunctions: (() => void)[] = [];
     private connectionTimeout = 10000;
     private reconnectDelay = 1000;
@@ -205,12 +154,12 @@ export class WebSocketRPCClient extends EventEmitter<WebSocketClientEvents> {
 
     private handleMessage(event: MessageEvent): void {
         try {
-            console.log("WebSocket: メッセージ受信", {
-                data: event.data,
-                type: event.type,
-                state: this.getWebSocketState(this.ws?.readyState || WebSocket.CLOSED)
-            });
             const data = JSON.parse(event.data);
+            const callback = this.pendingRequests.get(data.id);
+            if (callback) {
+                callback(data);
+                this.pendingRequests.delete(data.id);
+            }
             this.emit("message", data);
         } catch (err) {
             console.error("WebSocket: メッセージパースエラー", {
@@ -290,7 +239,6 @@ export class WebSocketRPCClient extends EventEmitter<WebSocketClientEvents> {
             this.ws.close(1000, "正常終了");
             this.ws = null;
             this.removeAllListeners();
-            this.connectPromise = null;
         }
         this.isClosing = false;
     }

@@ -1,10 +1,14 @@
-import type { ChatResponse } from "@/shared/types";
+import type { ChatResponse, EssayConfig } from "@/shared/types";
 import { useState } from "react";
 import { useWebSocketRPC } from "./use-websocket-rpc";
 
 const WEBSOCKET_URL = import.meta.env.PROD
     ? `wss://${window.location.host}/api/ws`
     : "ws://localhost:8080/api/ws";
+
+interface SendMessageOptions {
+    essayConfig?: EssayConfig;
+}
 
 export function useChat() {
     const [messages, setMessages] = useState<ChatResponse[]>([]);
@@ -13,7 +17,7 @@ export function useChat() {
 
     const ws = useWebSocketRPC(WEBSOCKET_URL);
 
-    const sendMessage = async (message: string, images?: string[]) => {
+    const sendMessage = async (message: string, options?: SendMessageOptions) => {
         setIsLoading(true);
         setError(null);
         try {
@@ -27,7 +31,10 @@ export function useChat() {
             setMessages((prev) => [...prev, userMessage]);
 
             // WebSocketでメッセージを送信
-            const response = await ws.call<ChatResponse>("chat", { message, images });
+            const response = await ws.call<ChatResponse>("chat", {
+                message,
+                essayConfig: options?.essayConfig
+            });
             setMessages((prev) => [
                 ...prev,
                 { ...response, type: "assistant" as const },
